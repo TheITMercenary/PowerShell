@@ -1,0 +1,55 @@
+<#
+.SYNOPSIS
+    Gets disabled Active Directory users and removes their group memberships.
+.DESCRIPTION
+    This script gets all disabled users from the current domain in Active Directory, filters out any SAM Account Names
+    listed in a text file defined in the $Exclusions variable, gets the users group memberships, removes the groups, and 
+    documents the removal of the groups.
+.NOTES
+    This script requires an exclusion file to exist but it may be empty.
+    
+    Author:     The IT Mercenary
+    Date:       1/23/2024
+    Version:    1
+#>
+
+# Variables
+$log = 'C:\SCRIPTS\logs\DisabledUserGroupCleanup.log'
+$now = get-date -Format "yyyy-MM-dd hhhh:mm"
+$Exclusions = 'C:\SCRIPTS\IN\DisabledUsersGroupCleanupExclusions.txt'
+$DisabledUsers = Get-ADUser -Filter { Enabled -eq $false } # Get all disabled AD users.
+$FilteredAdUsers = @() # Filtered users array
+
+# Confirm the exclusion list exists before proceeding.
+if (Test-Path -Path $Exclusions) {
+    $Exclusions = Get-Content -Path $Exclusions
+    # Check to see if users from $DisabledUsers exist in the the exclusions list, and if they don't exist in exclusions, put them in $FitleredADUsers collection.
+    foreach ($Aduser in $DisabledUsers) {
+        if ($AdUser.SamAccountName -notin $Exclusions) {
+            $FilteredAdUsers += $AdUser
+        }
+    }
+
+    # For each user in the filtered AD users, get their groups from the MemberOf property, pull out only the group name into the "short groups" variable, then remove the groups from the user and log it.
+    Foreach ($user in $FilteredAdUsers) {
+
+        $groups = @()
+        $groups = (get-aduser $($user.SamAccountName) -Properties MemberOf).MemberOf | Select-String -Pattern 'CN=(.*?),' # This regex matches the literal "CN=", followed by a non-greedy anything, followed by a comma. The AD group name we're interested in is enclosed in parens and returns as match group 1.
+    
+        $shortGroups = @()
+        foreach ($group in $groups) {
+            $shortGroups += $group.matches.groups[1].value  
+        }
+
+        # If the user is a member of groups, remove those groups and log it.
+        if ($shortGroups) {
+            # REMOVE GROUP HERE    
+            foreach ($shortGroup in $shortGroups) {
+                Write-Output "$now`tGroup `"$shortGroup`" removed from $($user.Name) `($($user.SamAccountName)`)" | Out-File -FilePath $log -Append
+            }    
+        }
+    }
+}
+else {
+    Write-Host "`$Exclusions is required and empty! You must make a file at the location defined in the variable `$Exclusions." -ForegroundColor Red
+}
