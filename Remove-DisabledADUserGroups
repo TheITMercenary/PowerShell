@@ -47,7 +47,7 @@ if (Test-Path -Path $Exclusions) {
         # If the user is a member of groups, remove those groups and log it.
         if ($shortGroups) {
             foreach ($shortGroup in $shortGroups) {
-                Remove-ADGroupMember -Identity $shortGroup -Members $($Aduser.SamAccountName) -WhatIf
+                Remove-ADGroupMember -Identity $shortGroup -Members $($Aduser.SamAccountName) -Confirm:$false -WhatIf
                 Write-Output "$now`tGroup `"$shortGroup`" removed from $($user.Name) `($($user.SamAccountName)`)" | Out-File -FilePath $log -Append
             }    
         }
