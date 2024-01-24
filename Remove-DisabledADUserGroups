@@ -5,16 +5,19 @@
     This script gets all disabled users from the current domain in Active Directory, filters out any SAM Account Names
     listed in a text file defined in the $Exclusions variable, gets the users group memberships, removes the groups, and 
     documents the removal of the groups.
+
+    This script requires an exclusion file to exist but it may be empty. I suggest including the krbtgt user at a minimum.
+    You may also need to include disabled user mail enabled users accounts for shared mailboxes.
+
+    UNCOMMENT -WHATIF ON LINE 50!
 .NOTES
-    This script requires an exclusion file to exist but it may be empty.
-    
     Author:     The IT Mercenary
     Date:       1/23/2024
     Version:    1
 #>
 
 # Variables
-$log = 'C:\SCRIPTS\logs\DisabledUserGroupCleanup.log'
+$log = 'C:\SCRIPTS\LOGS\DisabledUserGroupCleanup.log'
 $now = get-date -Format "yyyy-MM-dd hhhh:mm"
 $Exclusions = 'C:\SCRIPTS\IN\DisabledUsersGroupCleanupExclusions.txt'
 $DisabledUsers = Get-ADUser -Filter { Enabled -eq $false } # Get all disabled AD users.
@@ -43,8 +46,8 @@ if (Test-Path -Path $Exclusions) {
 
         # If the user is a member of groups, remove those groups and log it.
         if ($shortGroups) {
-            # REMOVE GROUP HERE    
             foreach ($shortGroup in $shortGroups) {
+                Remove-ADGroupMember -Identity $shortGroup -Members $($Aduser.SamAccountName) -WhatIf
                 Write-Output "$now`tGroup `"$shortGroup`" removed from $($user.Name) `($($user.SamAccountName)`)" | Out-File -FilePath $log -Append
             }    
         }
